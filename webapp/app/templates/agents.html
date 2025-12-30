@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Agents - BMAD Dashboard{% endblock %}
+{% block page_title %}AI Agents{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ selectedModule: 'all', searchQuery: '' }">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">AI Agents</h2>
+            <p class="mt-1 text-gray-500">{{ agents|length }} specialized agents across {{ modules|length }} modules</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <!-- Search -->
+            <div class="relative">
+                <input type="text" x-model="searchQuery" placeholder="Search agents..." 
+                       class="w-64 rounded-lg border-gray-300 bg-white pl-10 pr-4 py-2 text-sm shadow-sm focus:border-bmad-primary focus:ring-bmad-primary">
+                <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Module Filter Tabs -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-2">
+        <div class="flex flex-wrap gap-2">
+            <button @click="selectedModule = 'all'"
+                    :class="selectedModule === 'all' ? 'bg-bmad-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                All Modules
+                <span class="ml-1 px-2 py-0.5 rounded-full text-xs" 
+                      :class="selectedModule === 'all' ? 'bg-white/20' : 'bg-gray-200'">{{ agents|length }}</span>
+            </button>
+            {% for module in modules %}
+            <button @click="selectedModule = '{{ module.code }}'"
+                    :class="selectedModule === '{{ module.code }}' ? 'text-white' : 'text-gray-700 hover:bg-gray-200'"
+                    :style="selectedModule === '{{ module.code }}' ? 'background-color: {{ module.color }}' : 'background-color: #f3f4f6'"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                {{ module.icon }} {{ module.name }}
+                <span class="ml-1 px-2 py-0.5 rounded-full text-xs"
+                      :class="selectedModule === '{{ module.code }}' ? 'bg-white/20' : 'bg-gray-200'">{{ module.agent_count }}</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Agents Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for agent in agents %}
+        <div x-show="(selectedModule === 'all' || selectedModule === '{{ agent.module }}') && 
+                     (searchQuery === '' || '{{ agent.name }}'.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      '{{ agent.title }}'.toLowerCase().includes(searchQuery.toLowerCase()))"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 transform scale-95"
+             x-transition:enter-end="opacity-100 transform scale-100"
+             class="card-hover bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            
+            <!-- Card Header -->
+            <div class="p-6 pb-4">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-xl text-3xl" 
+                             style="background-color: {{ agent.module_color }}15;">
+                            {{ agent.icon }}
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900 text-lg">{{ agent.name }}</h3>
+                            <p class="text-sm text-gray-500">{{ agent.title }}</p>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-medium"
+                          style="background-color: {{ agent.module_color }}15; color: {{ agent.module_color }};">
+                        {{ agent.module_name }}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Persona -->
+            <div class="px-6 pb-4">
+                <p class="text-sm text-gray-600 line-clamp-2">{{ agent.persona.role }}</p>
+            </div>
+            
+            <!-- Stats -->
+            <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <div class="flex items-center space-x-4 text-sm text-gray-500">
+                    <span class="flex items-center">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+                        </svg>
+                        {{ agent.menu_count }} commands
+                    </span>
+                    {% if agent.has_discussion %}
+                    <span class="flex items-center text-green-600">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                        Chat
+                    </span>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('main.agent_detail', module=agent.module, agent_id=agent.name) }}" 
+                   class="text-sm font-medium text-bmad-primary hover:text-indigo-800">
+                    View details →
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Empty State -->
+    <div x-show="!document.querySelectorAll('[x-show]:not([style*=\"display: none\"])').length" 
+         class="text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No agents found</h3>
+        <p class="mt-1 text-sm text-gray-500">Try adjusting your search or filter.</p>
+    </div>
+</div>
+{% endblock %}
