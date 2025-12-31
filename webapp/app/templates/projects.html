@@ -123,9 +123,10 @@
                 <span class="text-xs text-gray-500">
                     Updated {{ project.updated_at.strftime('%b %d, %Y') if project.updated_at else 'Never' }}
                 </span>
-                <button class="text-sm font-medium text-bmad-primary hover:text-indigo-800">
-                    Open →
-                </button>
+                <a href="{{ url_for('main.project_workspace', project_id=project.id) }}" 
+                   class="text-sm font-medium text-bmad-primary hover:text-indigo-800">
+                    Open Workspace →
+                </a>
             </div>
         </div>
         {% endfor %}

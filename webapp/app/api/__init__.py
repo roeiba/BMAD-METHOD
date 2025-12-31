@@ -3,11 +3,15 @@ BMAD Web Dashboard - API Blueprint
 """
 from flask import Blueprint, jsonify, request
 from ..services import AgentService, WorkflowService, ModuleService
-from ..models import Project, WorkflowStatus, SprintStatus, Activity
+from ..models import Project, WorkflowStatus, Activity
 from ..extensions import db
 from datetime import datetime
 
 api_bp = Blueprint('api', __name__)
+
+# Import and register BMAD API
+from .bmad_api import bmad_api
+api_bp.register_blueprint(bmad_api, url_prefix='/bmad')
 
 
 # ============================================================================

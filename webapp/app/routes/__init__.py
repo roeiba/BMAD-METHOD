@@ -124,6 +124,14 @@ def projects():
     return render_template('projects.html', projects=all_projects)
 
 
+@main_bp.route('/projects/<int:project_id>/workspace')
+def project_workspace(project_id):
+    """Project workspace - full BMAD workflow management."""
+    project = Project.query.get_or_404(project_id)
+    
+    return render_template('project_workspace.html', project=project)
+
+
 @main_bp.route('/analytics')
 def analytics():
     """Analytics view."""

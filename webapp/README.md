@@ -1,6 +1,6 @@
 # 🚀 BMAD Web Dashboard
 
-A professional Flask-based web dashboard for the BMAD Method (Breakthrough Method of Agile AI-driven Development).
+A professional Flask-based web dashboard for the BMAD Method (Breakthrough Method of Agile AI-driven Development). **Full support for the complete BMAD workflow** - from project initialization through PRD creation, epic/story breakdown, and sprint management.
 
 ![Python](https://img.shields.io/badge/Python-3.12+-blue?style=flat-square&logo=python)
 ![Flask](https://img.shields.io/badge/Flask-3.1-green?style=flat-square&logo=flask)
@@ -8,13 +8,25 @@ A professional Flask-based web dashboard for the BMAD Method (Breakthrough Metho
 
 ## ✨ Features
 
-- **📊 Dashboard** - Beautiful overview of your BMAD installation with stats and quick actions
-- **🤖 Agents Browser** - Explore all 25+ AI agents across 5 modules with full persona details
-- **📋 Workflows Viewer** - Browse 70+ workflows organized by development phases
-- **📦 Modules Explorer** - Deep dive into BMM, BMB, CIS, BMGD, and Core modules
-- **📁 Project Management** - Create and track BMAD projects
-- **📈 Analytics** - Visual insights with charts showing agent and workflow distribution
-- **🔌 REST API** - Full API for integration with other tools
+### 📊 Dashboard & Exploration
+- **Dashboard** - Beautiful overview of your BMAD installation with stats and quick actions
+- **Agents Browser** - Explore all 25+ AI agents across 5 modules with full persona details
+- **Workflows Viewer** - Browse 70+ workflows organized by development phases
+- **Modules Explorer** - Deep dive into BMM, BMB, CIS, BMGD, and Core modules
+- **Analytics** - Visual insights with charts showing agent and workflow distribution
+
+### 🎯 Full BMAD Workflow Support
+- **Project Workspace** - Comprehensive interface for managing BMAD projects
+- **Workflow Status Tracking** - Visual checklist of all workflow phases from `bmm-workflow-status.yaml`
+- **Document Management** - View and edit PRD, Architecture, Tech-Spec, and other BMAD documents
+- **Epic & Story Browser** - Parse and display epics/stories from your `epics.md` file
+- **Sprint Board** - Kanban-style board for tracking story status from `sprint-status.yaml`
+- **File-Based Sync** - All data reads/writes directly to BMAD project files (no separate database for project data)
+
+### 🔌 REST API
+- Full API for integration with other tools
+- Scan projects, read/write documents, manage workflow status
+- Update sprint status and story states
 
 ## 🏗️ Architecture
 
