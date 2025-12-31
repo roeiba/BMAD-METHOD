@@ -15,17 +15,73 @@ class Project(db.Model):
     path = db.Column(db.String(500), nullable=False, unique=True)
     track = db.Column(db.String(50), default='bmad-method')  # quick-flow, bmad-method, enterprise
     current_phase = db.Column(db.Integer, default=1)
-    status = db.Column(db.String(50), default='active')  # active, completed, archived
+    status = db.Column(db.String(50), default='setup')  # setup, planning, solutioning, implementation, completed
+    
+    # Project metadata
+    project_type = db.Column(db.String(50), default='greenfield')  # greenfield, brownfield
+    tech_stack = db.Column(db.JSON, default=list)
+    team_size = db.Column(db.String(20), default='solo')  # solo, small, medium, large
+    
+    # Phase completion tracking
+    phase1_completed = db.Column(db.Boolean, default=False)
+    phase2_completed = db.Column(db.Boolean, default=False)
+    phase3_completed = db.Column(db.Boolean, default=False)
+    phase4_completed = db.Column(db.Boolean, default=False)
+    
+    # Key document references
+    prd_id = db.Column(db.Integer, db.ForeignKey('documents.id'))
+    architecture_id = db.Column(db.Integer, db.ForeignKey('documents.id'))
+    tech_spec_id = db.Column(db.Integer, db.ForeignKey('documents.id'))
+    
+    # Current sprint
+    current_sprint_id = db.Column(db.Integer, db.ForeignKey('sprints.id'))
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     workflow_statuses = db.relationship('WorkflowStatus', backref='project', lazy='dynamic')
-    sprint_statuses = db.relationship('SprintStatus', backref='project', lazy='dynamic')
     activities = db.relationship('Activity', backref='project', lazy='dynamic')
+    documents = db.relationship('Document', backref='project', lazy='dynamic', foreign_keys='Document.project_id')
+    epics = db.relationship('Epic', backref='project', lazy='dynamic', cascade='all, delete-orphan')
+    stories = db.relationship('Story', backref='project', lazy='dynamic')
+    sprints = db.relationship('Sprint', backref='project', lazy='dynamic', foreign_keys='Sprint.project_id')
+    workflow_executions = db.relationship('WorkflowExecution', backref='project', lazy='dynamic')
     
-    def to_dict(self):
-        return {
+    @property
+    def epic_count(self):
+        return self.epics.count()
+    
+    @property
+    def story_count(self):
+        return self.stories.count()
+    
+    @property
+    def completed_stories(self):
+        return self.stories.filter_by(status='done').count()
+    
+    @property
+    def overall_progress(self):
+        """Calculate overall project progress based on phase and stories."""
+        phase_weight = {1: 10, 2: 30, 3: 20, 4: 40}
+        progress = 0
+        
+        if self.phase1_completed:
+            progress += phase_weight[1]
+        if self.phase2_completed:
+            progress += phase_weight[2]
+        if self.phase3_completed:
+            progress += phase_weight[3]
+        
+        # Phase 4 progress based on stories
+        if self.story_count > 0:
+            story_progress = (self.completed_stories / self.story_count) * phase_weight[4]
+            progress += story_progress
+        
+        return int(progress)
+    
+    def to_dict(self, include_stats=True):
+        data = {
             'id': self.id,
             'name': self.name,
             'description': self.description,
@@ -33,9 +89,30 @@ class Project(db.Model):
             'track': self.track,
             'current_phase': self.current_phase,
             'status': self.status,
+            'project_type': self.project_type,
+            'tech_stack': self.tech_stack,
+            'team_size': self.team_size,
+            'phase1_completed': self.phase1_completed,
+            'phase2_completed': self.phase2_completed,
+            'phase3_completed': self.phase3_completed,
+            'phase4_completed': self.phase4_completed,
+            'prd_id': self.prd_id,
+            'architecture_id': self.architecture_id,
+            'tech_spec_id': self.tech_spec_id,
+            'current_sprint_id': self.current_sprint_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+        
+        if include_stats:
+            data.update({
+                'epic_count': self.epic_count,
+                'story_count': self.story_count,
+                'completed_stories': self.completed_stories,
+                'overall_progress': self.overall_progress,
+            })
+        
+        return data
 
 
 class WorkflowStatus(db.Model):
@@ -66,35 +143,3 @@ class WorkflowStatus(db.Model):
         }
 
 
-class SprintStatus(db.Model):
-    """Sprint and story tracking."""
-    __tablename__ = 'sprint_statuses'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
-    sprint_number = db.Column(db.Integer, nullable=False)
-    epic_id = db.Column(db.String(50))
-    epic_name = db.Column(db.String(255))
-    story_id = db.Column(db.String(50))
-    story_name = db.Column(db.String(255))
-    status = db.Column(db.String(50), default='backlog')  # backlog, ready, in_progress, review, done
-    priority = db.Column(db.Integer, default=0)
-    estimated_points = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'project_id': self.project_id,
-            'sprint_number': self.sprint_number,
-            'epic_id': self.epic_id,
-            'epic_name': self.epic_name,
-            'story_id': self.story_id,
-            'story_name': self.story_name,
-            'status': self.status,
-            'priority': self.priority,
-            'estimated_points': self.estimated_points,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-        }
