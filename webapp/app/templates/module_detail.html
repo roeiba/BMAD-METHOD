@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module.name }} - BMAD Dashboard{% endblock %}
+{% block page_title %}Module Details{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back Link -->
+    <a href="{{ url_for('main.modules') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to Modules
+    </a>
+    
+    <!-- Module Header -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-8" style="background: linear-gradient(135deg, {{ module.color }}15 0%, {{ module.color }}05 100%);">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-6">
+                    <div class="flex h-24 w-24 items-center justify-center rounded-3xl text-6xl bg-white shadow-lg"
+                         style="border: 3px solid {{ module.color }};">
+                        {{ module.icon }}
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">{{ module.name }}</h1>
+                        <p class="mt-2 text-lg text-gray-600">{{ module.description }}</p>
+                        <div class="mt-4 flex items-center space-x-4">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                                  style="background-color: {{ module.color }}20; color: {{ module.color }};">
+                                {{ module.agents|length }} Agents
+                            </span>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
+                                {{ module.workflows|length }} Workflows
+                            </span>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
+                                Code: {{ module.code|upper }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Content Tabs -->
+    <div x-data="{ activeTab: 'agents' }">
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <button @click="activeTab = 'agents'"
+                        :class="activeTab === 'agents' ? 'border-b-2 text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        :style="activeTab === 'agents' ? 'border-color: {{ module.color }}' : ''"
+                        class="py-4 px-1 font-medium text-sm">
+                    Agents ({{ module.agents|length }})
+                </button>
+                <button @click="activeTab = 'workflows'"
+                        :class="activeTab === 'workflows' ? 'border-b-2 text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        :style="activeTab === 'workflows' ? 'border-color: {{ module.color }}' : ''"
+                        class="py-4 px-1 font-medium text-sm">
+                    Workflows ({{ module.workflows|length }})
+                </button>
+                {% if readme %}
+                <button @click="activeTab = 'readme'"
+                        :class="activeTab === 'readme' ? 'border-b-2 text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        :style="activeTab === 'readme' ? 'border-color: {{ module.color }}' : ''"
+                        class="py-4 px-1 font-medium text-sm">
+                    Documentation
+                </button>
+                {% endif %}
+            </nav>
+        </div>
+        
+        <!-- Agents Tab -->
+        <div x-show="activeTab === 'agents'" class="mt-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for agent in module.agents %}
+                <a href="{{ url_for('main.agent_detail', module=module.code, agent_id=agent.name) }}"
+                   class="card-hover bg-white rounded-xl shadow-sm border border-gray-100 p-5 block">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-xl text-2xl"
+                             style="background-color: {{ module.color }}15;">
+                            {{ agent.icon }}
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">{{ agent.name }}</h4>
+                            <p class="text-sm text-gray-500">{{ agent.title }}</p>
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            {{ agent.menu_count }} cmds
+                        </div>
+                    </div>
+                    <p class="mt-3 text-sm text-gray-600 line-clamp-2">{{ agent.persona.role }}</p>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Workflows Tab -->
+        <div x-show="activeTab === 'workflows'" class="mt-6">
+            {% if module.workflows %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for workflow in module.workflows %}
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-lg text-xl"
+                             style="background-color: {{ workflow.phase_info.color | default('#6b7280') }}20;">
+                            {{ workflow.phase_info.icon | default('📋') }}
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-xs font-medium"
+                              style="background-color: {{ workflow.phase_info.color | default('#6b7280') }}20; color: {{ workflow.phase_info.color | default('#6b7280') }};">
+                            Phase {{ workflow.phase }}
+                        </span>
+                    </div>
+                    <h4 class="font-medium text-gray-900">{{ workflow.title }}</h4>
+                    <p class="text-sm text-gray-500 mt-1">{{ workflow.name }}</p>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+                        <span>{{ workflow.step_count }} steps</span>
+                        <span class="px-2 py-0.5 rounded bg-gray-100">{{ workflow.type }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-gray-500">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <p class="mt-2">No workflows in this module yet.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- README Tab -->
+        {% if readme %}
+        <div x-show="activeTab === 'readme'" class="mt-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div class="prose max-w-none">
+                    <pre class="whitespace-pre-wrap text-sm text-gray-700 font-mono bg-gray-50 p-4 rounded-lg overflow-auto">{{ readme }}</pre>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

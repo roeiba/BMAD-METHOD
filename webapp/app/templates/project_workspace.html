@@ -1,0 +1,683 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - BMAD Workspace{% endblock %}
+{% block page_title %}Project Workspace{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="projectWorkspace({{ project.id }})" x-init="loadProject()">
+    <!-- Back Link -->
+    <a href="{{ url_for('main.projects') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to Projects
+    </a>
+    
+    <!-- Project Header -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-6 bg-gradient-to-r from-bmad-primary to-purple-600 text-white">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold">{{ project.name }}</h1>
+                    <p class="mt-1 text-indigo-100">{{ project.description or 'No description' }}</p>
+                    <div class="mt-3 flex items-center space-x-3">
+                        <span class="px-3 py-1 rounded-full text-sm font-medium bg-white/20">
+                            {{ project.track | replace('-', ' ') | title }}
+                        </span>
+                        <span class="px-3 py-1 rounded-full text-sm font-medium bg-white/20">
+                            Phase <span x-text="currentPhase">{{ project.current_phase }}</span>
+                        </span>
+                        <span class="px-3 py-1 rounded-full text-sm font-medium" 
+                              :class="hasBmad ? 'bg-green-400/30' : 'bg-yellow-400/30'">
+                            <span x-text="hasBmad ? '✅ BMAD Installed' : '⚠️ Not Initialized'"></span>
+                        </span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-indigo-100">Overall Progress</p>
+                    <p class="text-3xl font-bold" x-text="overallProgress + '%'">0%</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Phase Progress Bar -->
+        <div class="p-4 bg-gray-50 border-t">
+            <div class="flex items-center space-x-2">
+                <template x-for="phase in [0, 1, 2, 3]" :key="phase">
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-medium" :class="currentPhase >= phase ? 'text-bmad-primary' : 'text-gray-400'"
+                                  x-text="['Discovery', 'Planning', 'Solutioning', 'Implementation'][phase]"></span>
+                        </div>
+                        <div class="h-2 rounded-full" :class="currentPhase > phase ? 'bg-bmad-primary' : currentPhase === phase ? 'bg-bmad-primary/50' : 'bg-gray-200'"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Initialize Project Button (if not initialized) -->
+    <div x-show="!hasBmad" class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+        <div class="text-4xl mb-3">🚀</div>
+        <h3 class="text-lg font-semibold text-yellow-800">Initialize BMAD Project</h3>
+        <p class="text-yellow-600 mt-1 mb-4">Set up the BMAD workflow structure for this project</p>
+        <button @click="initializeProject()" 
+                class="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors">
+            Initialize Project
+        </button>
+    </div>
+    
+    <!-- Main Content Tabs -->
+    <div x-show="hasBmad" x-data="{ activeTab: 'workflow' }">
+        <!-- Tab Navigation -->
+        <div class="bg-white rounded-t-xl shadow-sm border border-gray-100 border-b-0">
+            <nav class="flex space-x-1 p-2">
+                <button @click="activeTab = 'workflow'"
+                        :class="activeTab === 'workflow' ? 'bg-bmad-primary text-white' : 'text-gray-600 hover:bg-gray-100'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    📋 Workflow Status
+                </button>
+                <button @click="activeTab = 'documents'"
+                        :class="activeTab === 'documents' ? 'bg-bmad-primary text-white' : 'text-gray-600 hover:bg-gray-100'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    📄 Documents
+                </button>
+                <button @click="activeTab = 'epics'"
+                        :class="activeTab === 'epics' ? 'bg-bmad-primary text-white' : 'text-gray-600 hover:bg-gray-100'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    📦 Epics & Stories
+                </button>
+                <button @click="activeTab = 'board'"
+                        :class="activeTab === 'board' ? 'bg-bmad-primary text-white' : 'text-gray-600 hover:bg-gray-100'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    🏃 Sprint Board
+                </button>
+            </nav>
+        </div>
+        
+        <!-- Tab Content -->
+        <div class="bg-white rounded-b-xl shadow-sm border border-gray-100 border-t-0 p-6">
+            
+            <!-- Workflow Status Tab -->
+            <div x-show="activeTab === 'workflow'" x-transition>
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-gray-900">Workflow Checklist</h2>
+                        <button @click="loadProject()" class="text-sm text-bmad-primary hover:text-indigo-800">
+                            ↻ Refresh
+                        </button>
+                    </div>
+                    
+                    <!-- Workflow phases -->
+                    <template x-for="(phase, phaseIdx) in workflowPhases" :key="phaseIdx">
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <div class="px-4 py-3 bg-gray-50 flex items-center justify-between"
+                                 :class="{'bg-green-50': isPhaseComplete(phaseIdx)}">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-xl" x-text="['🔍', '📋', '🏗️', '💻'][phaseIdx]"></span>
+                                    <div>
+                                        <h3 class="font-medium text-gray-900" x-text="phase.name"></h3>
+                                        <p class="text-sm text-gray-500" x-text="phase.description"></p>
+                                    </div>
+                                </div>
+                                <span x-show="isPhaseComplete(phaseIdx)" class="text-green-600 font-medium">✓ Complete</span>
+                            </div>
+                            <div class="p-4 space-y-2">
+                                <template x-for="wf in phase.workflows" :key="wf.id">
+                                    <div class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50"
+                                         :class="{'bg-green-50': getWorkflowStatus(wf.id) !== 'required' && getWorkflowStatus(wf.id) !== 'optional' && getWorkflowStatus(wf.id) !== 'recommended' && getWorkflowStatus(wf.id) !== 'conditional'}">
+                                        <div class="flex items-center space-x-3">
+                                            <input type="checkbox" 
+                                                   :checked="getWorkflowStatus(wf.id) !== 'required' && getWorkflowStatus(wf.id) !== 'optional' && getWorkflowStatus(wf.id) !== 'recommended' && getWorkflowStatus(wf.id) !== 'conditional'"
+                                                   @change="toggleWorkflow(wf.id, $event.target.checked)"
+                                                   class="h-5 w-5 rounded border-gray-300 text-bmad-primary focus:ring-bmad-primary">
+                                            <div>
+                                                <p class="font-medium text-gray-900" x-text="wf.name"></p>
+                                                <p class="text-sm text-gray-500">
+                                                    Agent: <span class="font-medium" x-text="wf.agent"></span>
+                                                    <span class="mx-1">•</span>
+                                                    Command: <code class="bg-gray-100 px-1 rounded" x-text="'*' + wf.command"></code>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-xs px-2 py-1 rounded-full"
+                                                  :class="{
+                                                      'bg-red-100 text-red-700': wf.required,
+                                                      'bg-yellow-100 text-yellow-700': wf.recommended,
+                                                      'bg-gray-100 text-gray-600': wf.optional,
+                                                      'bg-blue-100 text-blue-700': wf.conditional
+                                                  }"
+                                                  x-text="wf.required ? 'Required' : wf.recommended ? 'Recommended' : wf.conditional ? 'Conditional' : 'Optional'">
+                                            </span>
+                                            <span class="text-xs text-gray-400" x-text="getWorkflowStatus(wf.id)"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            
+            <!-- Documents Tab -->
+            <div x-show="activeTab === 'documents'" x-transition>
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-gray-900">Project Documents</h2>
+                        <div class="flex items-center space-x-2">
+                            <select x-model="newDocType" class="text-sm border-gray-300 rounded-lg">
+                                <option value="">Create new...</option>
+                                <option value="prd">PRD</option>
+                                <option value="architecture">Architecture</option>
+                                <option value="tech-spec">Tech Spec</option>
+                                <option value="epics">Epics</option>
+                            </select>
+                            <button @click="createDocument()" x-show="newDocType"
+                                    class="px-3 py-1.5 bg-bmad-primary text-white text-sm rounded-lg hover:bg-indigo-700">
+                                + Create
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Document Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <template x-for="doc in documents" :key="doc.path">
+                            <div @click="openDocument(doc)" 
+                                 class="cursor-pointer border border-gray-200 rounded-lg p-4 hover:border-bmad-primary hover:shadow-md transition-all">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-2xl" x-text="doc.icon"></span>
+                                        <div>
+                                            <h3 class="font-medium text-gray-900" x-text="doc.title"></h3>
+                                            <p class="text-sm text-gray-500" x-text="doc.type.toUpperCase()"></p>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600"
+                                          x-text="'Phase ' + doc.phase"></span>
+                                </div>
+                                <div class="mt-3 flex items-center justify-between text-sm text-gray-400">
+                                    <span x-text="doc.word_count + ' words'"></span>
+                                    <span x-text="new Date(doc.modified).toLocaleDateString()"></span>
+                                </div>
+                            </div>
+                        </template>
+                        
+                        <!-- Empty state -->
+                        <div x-show="documents.length === 0" class="col-span-full text-center py-8 text-gray-500">
+                            <p>No documents yet. Create your first document to get started.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Epics & Stories Tab -->
+            <div x-show="activeTab === 'epics'" x-transition>
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-gray-900">Epics & Stories</h2>
+                        <button @click="createStoryModal = true"
+                                class="px-3 py-1.5 bg-bmad-primary text-white text-sm rounded-lg hover:bg-indigo-700">
+                            + New Story File
+                        </button>
+                    </div>
+                    
+                    <!-- Epics Accordion -->
+                    <div class="space-y-4">
+                        <template x-for="epic in epics" :key="epic.key">
+                            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                <div class="px-4 py-3 bg-gray-50 flex items-center justify-between cursor-pointer"
+                                     @click="epic.expanded = !epic.expanded">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-xl">📦</span>
+                                        <div>
+                                            <h3 class="font-medium text-gray-900">
+                                                <span x-text="epic.key"></span>: <span x-text="epic.title"></span>
+                                            </h3>
+                                            <p class="text-sm text-gray-500">
+                                                <span x-text="epic.stories?.length || 0"></span> stories
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-xs px-2 py-1 rounded-full"
+                                              :class="{
+                                                  'bg-gray-100 text-gray-600': epic.status === 'backlog',
+                                                  'bg-blue-100 text-blue-700': epic.status === 'in-progress',
+                                                  'bg-green-100 text-green-700': epic.status === 'done'
+                                              }"
+                                              x-text="epic.status || 'backlog'"></span>
+                                        <svg :class="epic.expanded ? 'rotate-180' : ''" class="h-5 w-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                <!-- Stories -->
+                                <div x-show="epic.expanded" x-transition class="border-t divide-y">
+                                    <template x-for="story in epic.stories" :key="story.key">
+                                        <div class="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                                            <div class="flex items-center space-x-3">
+                                                <span class="text-lg">📝</span>
+                                                <div>
+                                                    <p class="font-medium text-gray-900">
+                                                        <span x-text="story.key"></span>: <span x-text="story.title"></span>
+                                                    </p>
+                                                    <p class="text-sm text-gray-500" x-show="story.user_story">
+                                                        As a <span x-text="story.user_story?.role"></span>...
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                <select @change="updateStoryStatus(epic.number, story.number, $event.target.value)"
+                                                        :value="story.status || 'backlog'"
+                                                        class="text-xs border-gray-300 rounded">
+                                                    <option value="backlog">Backlog</option>
+                                                    <option value="ready-for-dev">Ready</option>
+                                                    <option value="in-progress">In Progress</option>
+                                                    <option value="review">Review</option>
+                                                    <option value="done">Done</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <div x-show="!epic.stories?.length" class="px-4 py-6 text-center text-gray-500">
+                                        No stories in this epic yet
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                        
+                        <div x-show="epics.length === 0" class="text-center py-8 text-gray-500">
+                            <p>No epics found. Create an epics document or run the create-epics-and-stories workflow.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Story Files -->
+                    <div x-show="storyFiles.length > 0" class="mt-6">
+                        <h3 class="text-md font-semibold text-gray-900 mb-3">Story Files</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <template x-for="story in storyFiles" :key="story.path">
+                                <div @click="openStoryFile(story)"
+                                     class="cursor-pointer border border-gray-200 rounded-lg p-3 hover:border-bmad-primary transition-colors">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-medium text-gray-900" x-text="story.title"></p>
+                                            <p class="text-sm text-gray-500" x-text="story.filename"></p>
+                                        </div>
+                                        <span class="text-xs px-2 py-1 rounded-full"
+                                              :class="{
+                                                  'bg-gray-100 text-gray-600': story.status === 'backlog',
+                                                  'bg-yellow-100 text-yellow-700': story.status === 'ready-for-dev',
+                                                  'bg-blue-100 text-blue-700': story.status === 'in-progress',
+                                                  'bg-purple-100 text-purple-700': story.status === 'review',
+                                                  'bg-green-100 text-green-700': story.status === 'done'
+                                              }"
+                                              x-text="story.status"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sprint Board Tab -->
+            <div x-show="activeTab === 'board'" x-transition>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-gray-900">Sprint Board</h2>
+                    </div>
+                    
+                    <!-- Kanban Board -->
+                    <div class="grid grid-cols-5 gap-4">
+                        <template x-for="column in ['backlog', 'ready-for-dev', 'in-progress', 'review', 'done']" :key="column">
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <h3 class="font-medium text-gray-700 mb-3 text-center"
+                                    :class="{
+                                        'text-gray-600': column === 'backlog',
+                                        'text-yellow-600': column === 'ready-for-dev',
+                                        'text-blue-600': column === 'in-progress',
+                                        'text-purple-600': column === 'review',
+                                        'text-green-600': column === 'done'
+                                    }"
+                                    x-text="column.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())"></h3>
+                                <div class="space-y-2 min-h-[200px]">
+                                    <template x-for="story in getBoardStories(column)" :key="story.key">
+                                        <div class="bg-white rounded-lg p-3 shadow-sm border cursor-pointer hover:shadow-md transition-shadow">
+                                            <p class="text-xs text-gray-400" x-text="story.key"></p>
+                                            <p class="font-medium text-gray-900 text-sm mt-1" x-text="story.title"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Document Editor Modal -->
+    <div x-show="editorOpen" 
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         class="fixed inset-0 z-50 overflow-hidden" x-cloak>
+        <div class="absolute inset-0 bg-gray-900/50" @click="editorOpen = false"></div>
+        <div class="absolute inset-4 md:inset-10 bg-white rounded-xl shadow-2xl flex flex-col">
+            <!-- Editor Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900" x-text="currentDoc?.title"></h3>
+                    <p class="text-sm text-gray-500" x-text="currentDoc?.filename"></p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button @click="saveDocument()" 
+                            class="px-4 py-2 bg-bmad-primary text-white rounded-lg hover:bg-indigo-700">
+                        Save
+                    </button>
+                    <button @click="editorOpen = false" class="text-gray-500 hover:text-gray-700">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Editor Content -->
+            <div class="flex-1 p-6 overflow-hidden">
+                <textarea x-model="editorContent" 
+                          class="w-full h-full font-mono text-sm border border-gray-300 rounded-lg p-4 resize-none focus:ring-bmad-primary focus:border-bmad-primary"></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Story Modal -->
+    <div x-show="createStoryModal" x-transition class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-gray-900/50" @click="createStoryModal = false"></div>
+            <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">Create Story File</h3>
+                <form @submit.prevent="createStory()">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Epic #</label>
+                                <input type="number" x-model="newStory.epic_num" min="1" required
+                                       class="w-full rounded-lg border-gray-300">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Story #</label>
+                                <input type="number" x-model="newStory.story_num" min="1" required
+                                       class="w-full rounded-lg border-gray-300">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                            <input type="text" x-model="newStory.title" required
+                                   class="w-full rounded-lg border-gray-300" placeholder="User Authentication">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">As a...</label>
+                            <input type="text" x-model="newStory.role"
+                                   class="w-full rounded-lg border-gray-300" placeholder="registered user">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">I want to...</label>
+                            <input type="text" x-model="newStory.action"
+                                   class="w-full rounded-lg border-gray-300" placeholder="log into my account">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">So that...</label>
+                            <input type="text" x-model="newStory.benefit"
+                                   class="w-full rounded-lg border-gray-300" placeholder="I can access my data">
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" @click="createStoryModal = false"
+                                class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancel</button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-bmad-primary text-white rounded-lg hover:bg-indigo-700">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function projectWorkspace(projectId) {
+    return {
+        projectId: projectId,
+        hasBmad: false,
+        currentPhase: 0,
+        overallProgress: 0,
+        workflowStatus: {},
+        documents: [],
+        epics: [],
+        storyFiles: [],
+        sprintStatus: null,
+        editorOpen: false,
+        editorContent: '',
+        currentDoc: null,
+        createStoryModal: false,
+        newDocType: '',
+        newStory: { epic_num: 1, story_num: 1, title: '', role: '', action: '', benefit: '' },
+        
+        workflowPhases: [
+            {
+                name: 'Phase 0: Discovery',
+                description: 'Optional brainstorming and research',
+                workflows: [
+                    { id: 'brainstorm-project', name: 'Brainstorm Project', agent: 'analyst', command: 'brainstorm-project', optional: true },
+                    { id: 'research', name: 'Research', agent: 'analyst', command: 'research', optional: true },
+                    { id: 'product-brief', name: 'Product Brief', agent: 'analyst', command: 'product-brief', recommended: true }
+                ]
+            },
+            {
+                name: 'Phase 1: Planning',
+                description: 'Requirements and design',
+                workflows: [
+                    { id: 'prd', name: 'Product Requirements (PRD)', agent: 'pm', command: 'prd', required: true },
+                    { id: 'create-ux-design', name: 'UX Design', agent: 'ux-designer', command: 'create-ux-design', conditional: true }
+                ]
+            },
+            {
+                name: 'Phase 2: Solutioning',
+                description: 'Architecture and story breakdown',
+                workflows: [
+                    { id: 'create-architecture', name: 'Architecture', agent: 'architect', command: 'create-architecture', required: true },
+                    { id: 'create-epics-and-stories', name: 'Epics & Stories', agent: 'pm', command: 'create-epics-and-stories', required: true },
+                    { id: 'implementation-readiness', name: 'Implementation Readiness', agent: 'architect', command: 'implementation-readiness', required: true }
+                ]
+            },
+            {
+                name: 'Phase 3: Implementation',
+                description: 'Sprint planning and development',
+                workflows: [
+                    { id: 'sprint-planning', name: 'Sprint Planning', agent: 'sm', command: 'sprint-planning', required: true }
+                ]
+            }
+        ],
+        
+        async loadProject() {
+            try {
+                const response = await fetch(`/api/bmad/projects/${this.projectId}/scan`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.hasBmad = data.data.has_bmad;
+                    this.currentPhase = data.data.current_phase || 0;
+                    this.documents = data.data.documents || [];
+                    this.epics = (data.data.epics || []).map(e => ({...e, expanded: false}));
+                    this.sprintStatus = data.data.sprint_status;
+                    
+                    if (data.data.workflow_status) {
+                        this.workflowStatus = data.data.workflow_status.workflow_status || {};
+                    }
+                    
+                    // Load story files
+                    const storiesRes = await fetch(`/api/bmad/projects/${this.projectId}/stories`);
+                    const storiesData = await storiesRes.json();
+                    this.storyFiles = storiesData.data || [];
+                    
+                    this.calculateProgress();
+                }
+            } catch (error) {
+                console.error('Error loading project:', error);
+            }
+        },
+        
+        getWorkflowStatus(id) {
+            return this.workflowStatus[id] || 'pending';
+        },
+        
+        isPhaseComplete(phaseIdx) {
+            const phase = this.workflowPhases[phaseIdx];
+            return phase.workflows.every(wf => {
+                const status = this.getWorkflowStatus(wf.id);
+                return status !== 'required' && status !== 'recommended' || wf.optional;
+            });
+        },
+        
+        calculateProgress() {
+            let completed = 0;
+            let total = 0;
+            
+            for (const phase of this.workflowPhases) {
+                for (const wf of phase.workflows) {
+                    if (wf.required) {
+                        total++;
+                        const status = this.getWorkflowStatus(wf.id);
+                        if (status !== 'required') completed++;
+                    }
+                }
+            }
+            
+            this.overallProgress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        },
+        
+        async toggleWorkflow(id, checked) {
+            const newStatus = checked ? `completed-${new Date().toISOString().split('T')[0]}` : 'required';
+            
+            try {
+                await fetch(`/api/bmad/projects/${this.projectId}/workflow-status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workflow_status: { [id]: newStatus } })
+                });
+                
+                this.workflowStatus[id] = newStatus;
+                this.calculateProgress();
+            } catch (error) {
+                console.error('Error updating workflow:', error);
+            }
+        },
+        
+        async initializeProject() {
+            try {
+                const response = await fetch(`/api/bmad/projects/${this.projectId}/initialize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ track: '{{ project.track }}' })
+                });
+                
+                if (response.ok) {
+                    await this.loadProject();
+                }
+            } catch (error) {
+                console.error('Error initializing project:', error);
+            }
+        },
+        
+        openDocument(doc) {
+            this.currentDoc = doc;
+            this.editorContent = doc.content;
+            this.editorOpen = true;
+        },
+        
+        openStoryFile(story) {
+            this.currentDoc = { ...story, title: story.title, filename: story.filename };
+            this.editorContent = story.content;
+            this.editorOpen = true;
+        },
+        
+        async saveDocument() {
+            try {
+                await fetch('/api/bmad/documents/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: this.currentDoc.path, content: this.editorContent })
+                });
+                
+                this.editorOpen = false;
+                await this.loadProject();
+            } catch (error) {
+                console.error('Error saving document:', error);
+            }
+        },
+        
+        async createDocument() {
+            if (!this.newDocType) return;
+            
+            try {
+                await fetch(`/api/bmad/projects/${this.projectId}/documents`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: this.newDocType, title: '{{ project.name }}' })
+                });
+                
+                this.newDocType = '';
+                await this.loadProject();
+            } catch (error) {
+                console.error('Error creating document:', error);
+            }
+        },
+        
+        async createStory() {
+            try {
+                await fetch(`/api/bmad/projects/${this.projectId}/stories`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.newStory)
+                });
+                
+                this.createStoryModal = false;
+                this.newStory = { epic_num: 1, story_num: 1, title: '', role: '', action: '', benefit: '' };
+                await this.loadProject();
+            } catch (error) {
+                console.error('Error creating story:', error);
+            }
+        },
+        
+        async updateStoryStatus(epicNum, storyNum, status) {
+            const key = `${epicNum}-${storyNum}`;
+            
+            try {
+                await fetch(`/api/bmad/projects/${this.projectId}/sprint-status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ updates: { [key]: status } })
+                });
+                
+                await this.loadProject();
+            } catch (error) {
+                console.error('Error updating story status:', error);
+            }
+        },
+        
+        getBoardStories(status) {
+            const stories = [];
+            for (const epic of this.epics) {
+                for (const story of epic.stories || []) {
+                    if ((story.status || 'backlog') === status) {
+                        stories.push(story);
+                    }
+                }
+            }
+            return stories;
+        }
+    };
+}
+</script>
+{% endblock %}

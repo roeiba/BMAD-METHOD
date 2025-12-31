@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Workflows - BMAD Dashboard{% endblock %}
+{% block page_title %}Workflows{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ selectedPhase: 'all' }">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Workflows</h2>
+            <p class="mt-1 text-gray-500">{{ workflows|length }} guided workflows across 4 development phases</p>
+        </div>
+    </div>
+    
+    <!-- Phase Overview Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {% for phase_num, phase in phases.items() %}
+        <button @click="selectedPhase = selectedPhase === {{ phase_num }} ? 'all' : {{ phase_num }}"
+                :class="selectedPhase === {{ phase_num }} ? 'ring-2 ring-offset-2' : ''"
+                class="card-hover text-left bg-white rounded-xl shadow-sm border border-gray-100 p-5 transition-all"
+                :style="selectedPhase === {{ phase_num }} ? 'ring-color: {{ phase.color }}' : ''">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-3xl">{{ phase.icon }}</span>
+                <span class="text-2xl font-bold" style="color: {{ phase.color }};">{{ workflows_by_phase[phase_num]|length }}</span>
+            </div>
+            <h3 class="font-semibold text-gray-900">Phase {{ phase_num }}: {{ phase.name }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ phase.description }}</p>
+            <div class="mt-3 flex items-center justify-between">
+                {% if phase.optional %}
+                <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Optional</span>
+                {% else %}
+                <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Required</span>
+                {% endif %}
+                <span class="text-xs text-gray-400">{{ workflows_by_phase[phase_num]|length }} workflows</span>
+            </div>
+        </button>
+        {% endfor %}
+    </div>
+    
+    <!-- Workflow List by Phase -->
+    {% for phase_num, phase in phases.items() %}
+    <div x-show="selectedPhase === 'all' || selectedPhase === {{ phase_num }}"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        
+        <!-- Phase Header -->
+        <div class="px-6 py-4 border-b border-gray-100" style="background-color: {{ phase.color }}10;">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">{{ phase.icon }}</span>
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Phase {{ phase_num }}: {{ phase.name }}</h3>
+                        <p class="text-sm text-gray-500">{{ phase.description }}</p>
+                    </div>
+                </div>
+                <span class="px-3 py-1 rounded-full text-sm font-medium" style="background-color: {{ phase.color }}20; color: {{ phase.color }};">
+                    {{ workflows_by_phase[phase_num]|length }} workflows
+                </span>
+            </div>
+        </div>
+        
+        <!-- Workflows Grid -->
+        <div class="p-6">
+            {% if workflows_by_phase[phase_num] %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for workflow in workflows_by_phase[phase_num] %}
+                <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-lg text-xl" 
+                             style="background-color: {{ phase.color }}15;">
+                            {{ phase.icon }}
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                            {{ workflow.module }}
+                        </span>
+                    </div>
+                    <h4 class="font-medium text-gray-900">{{ workflow.title }}</h4>
+                    <p class="text-sm text-gray-500 mt-1">{{ workflow.name }}</p>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-sm">
+                        <span class="text-gray-500">
+                            {% if workflow.step_count > 0 %}
+                            {{ workflow.step_count }} steps
+                            {% else %}
+                            Single step
+                            {% endif %}
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                            {{ workflow.type }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <p>No workflows in this phase yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    
+    <!-- Flow Diagram -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Development Flow</h3>
+        <div class="flex items-center justify-between overflow-x-auto pb-4">
+            {% for phase_num, phase in phases.items() %}
+            <div class="flex items-center">
+                <div class="flex flex-col items-center">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-full text-2xl shadow-lg"
+                         style="background-color: {{ phase.color }}; color: white;">
+                        {{ phase.icon }}
+                    </div>
+                    <div class="mt-2 text-center">
+                        <p class="font-medium text-gray-900">Phase {{ phase_num }}</p>
+                        <p class="text-sm text-gray-500">{{ phase.name }}</p>
+                    </div>
+                </div>
+                {% if phase_num < 4 %}
+                <div class="flex-shrink-0 w-16 h-0.5 bg-gray-300 mx-4">
+                    <div class="h-full bg-gradient-to-r" style="background: linear-gradient(90deg, {{ phase.color }}, {{ phases[phase_num + 1].color }});"></div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

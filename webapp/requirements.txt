@@ -1,0 +1,21 @@
+# BMAD Web Dashboard - Python Dependencies
+# Flask and Extensions
+Flask==3.1.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Flask-CORS==5.0.0
+
+# Database
+SQLAlchemy==2.0.36
+
+# YAML/Markdown Processing
+PyYAML==6.0.2
+python-frontmatter==1.1.0
+markdown==3.7
+
+# Utilities
+python-dotenv==1.0.1
+click==8.1.7
+
+# Development
+watchdog==6.0.0
